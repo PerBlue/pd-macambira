@@ -39,7 +39,9 @@
 #define VERSION "0.1"
 
 // define it to use the lockfree fifo
+#ifndef ANDROID
 #define THREADLIB_LOCKFREE
+#endif
 
 // for debuging
 //#define DEBUG

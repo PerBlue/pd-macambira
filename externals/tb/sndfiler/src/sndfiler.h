@@ -43,8 +43,8 @@
 
 #include "g_canvas.h"
 #include "sndfile.h"
-#include "vorbis/codec.h"
-#include "vorbis/vorbisfile.h"
+#include "codec.h"
+#include "vorbisfile.h"
 
 #include "stdlib.h"
 #include <stdio.h>

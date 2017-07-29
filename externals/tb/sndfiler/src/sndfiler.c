@@ -128,7 +128,7 @@ static void sndfiler_thread(void)
         t_sfprocess * me;
         SEM_WAIT(sndfiler_queue.sem);
 
-        while (me = (t_sfprocess *)fifo_get(sndfiler_queue.x_jobs))
+        while (me = (t_sfprocess *)threadlib_fifo_get(sndfiler_queue.x_jobs))
         {
             (me->process)(me->x, me->argc, me->argv);
 
@@ -146,7 +146,7 @@ static void sndfiler_start_thread(void)
     int status;
 
     //initialize queue
-    sndfiler_queue.x_jobs = fifo_init();
+    sndfiler_queue.x_jobs = threadlib_fifo_init();
 
 	status = SEM_INIT(sndfiler_queue.sem);
     if(!status)
@@ -197,7 +197,7 @@ static void sndfiler_read(t_sndfiler * x, t_symbol *s, int argc, t_atom* argv)
     process->argc = argc;
     process->argv = (t_atom*) copybytes(argv, sizeof(t_atom) * argc);
 
-    fifo_put(sndfiler_queue.x_jobs, process);
+    threadlib_fifo_put(sndfiler_queue.x_jobs, process);
 
     SEM_SIGNAL(sndfiler_queue.sem);
 }
@@ -368,7 +368,7 @@ static void sndfiler_resize(t_sndfiler * x, t_symbol *s, int argc, t_atom* argv)
     process->argc = argc;
     process->argv = (t_atom*) copybytes(argv, sizeof(t_atom) * argc);
 
-    fifo_put(sndfiler_queue.x_jobs, process);
+    threadlib_fifo_put(sndfiler_queue.x_jobs, process);
 
     SEM_SIGNAL(sndfiler_queue.sem);
 }

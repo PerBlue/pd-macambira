@@ -27,7 +27,7 @@ int check_fileformat(t_symbol* file)
     OggVorbis_File vorbisfile;
 
     // partially opens a vorbis file to test for Vorbis-ness
-    if( !(fp = fopen(file->s_name, "r")) )
+    if( !(fp = fopen(file->s_name, "rb")) )
         return -1;
 
     if( ov_test(fp, &vorbisfile, NULL, 0) < 0 )
@@ -145,7 +145,7 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
     OggVorbis_File vorbisfile;
     vorbis_info *info;
 
-    if( !(fp = fopen(file->s_name, "r")) )
+    if( !(fp = fopen(file->s_name, "rb")) )
         return -1;
 
     if( ov_open(fp, &vorbisfile, NULL, 0) < 0 )

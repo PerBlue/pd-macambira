@@ -42,6 +42,7 @@ struct _garray
     char x_usedindsp;       /* true if some DSP routine is using this */
     char x_saveit;          /* true if we should save this with parent */
     char x_listviewing;     /* true if list view window is open */
+    char x_hidename;        /* don't print name above graph */
 };
 #endif
 
@@ -105,8 +106,9 @@ typedef struct _syncdata
 {
     t_garray** arrays;
     t_float** helper_arrays;
-    int argc;
-    t_int frames;
+    int channel_count;
+    int frames;
+    t_sndfiler* x;
 } t_syncdata;
 
 static t_sfqueue sndfiler_queue; 
@@ -247,7 +249,7 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
     arrays = getbytes(channel_count * sizeof(t_garray*));
     for (i = 0; i != channel_count; ++i)
     {
-        t_float *dummy;
+        t_word *dummy;
         int size;
         t_garray *array;
          
@@ -259,7 +261,7 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
             return;
         }
 	
-        if(garray_getfloatarray(array, &size, &dummy))
+        if(garray_getfloatwords(array, &size, &dummy))
             arrays[i] = array;
         else
         {
@@ -291,15 +293,9 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
 
     if(arraysize > 0)
     {
-        t_int ** syncdata = getbytes(sizeof(t_int*) * 5);
+        t_syncdata syncdata = {arrays, helper_arrays, channel_count, arraysize, x};
 
-        syncdata[0] = (t_int*)arrays;
-        syncdata[1] = (t_int*)helper_arrays;
-        syncdata[2] = (t_int*)channel_count;
-        syncdata[3] = (t_int*)arraysize;
-        syncdata[4] = (t_int*)x;
-
-        sys_callback(sndfiler_synchonize, (t_int*)syncdata, 5);
+        sys_callback(sndfiler_synchonize, (t_int*)&syncdata, sizeof(t_syncdata));
         return;
     }
     else
@@ -316,11 +312,12 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
 static t_int sndfiler_synchonize(t_int * w)
 {
     int i;
-    t_garray** arrays = (t_garray**) w[0];
-    t_float** helper_arrays = (t_float**) w[1];
-    t_int channel_count = (t_int)w[2];
-    t_int frames = (t_int)w[3];
-    t_sndfiler* x = (t_sndfiler*)w[4];
+    t_syncdata* syncdata = (t_syncdata*)w;
+    t_garray** arrays = syncdata->arrays;
+    t_float** helper_arrays = syncdata->helper_arrays;
+    int channel_count = syncdata->channel_count;
+    int frames = syncdata->frames;
+    t_sndfiler* x = syncdata->x;
 
     for (i = 0; i != channel_count; ++i)
     {
@@ -328,7 +325,7 @@ static t_int sndfiler_synchonize(t_int * w)
         t_array * array = h_garray_getarray(garray);
         t_glist * gl = garray->x_glist;;
 
-        freealignedbytes(array->a_vec, array->a_n);
+        freealignedbytes(array->a_vec, array->a_elemsize * array->a_n);
         array->a_vec = (char*)helper_arrays[i];
         array->a_n = frames;
 

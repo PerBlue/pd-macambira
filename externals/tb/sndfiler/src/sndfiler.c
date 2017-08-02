@@ -325,7 +325,7 @@ static t_int sndfiler_synchonize(t_int * w)
         t_glist * gl = garray->x_glist;
 
         t_word* vec;
-        int size, j;
+        int size;
         garray_resize_long(garray, frames);//can unconditionally resize since read passed frames based on resize parameter
         if (!garray_getfloatwords(garray, &size, &vec) || (size != frames))
 		{

@@ -295,7 +295,7 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
     {
         t_syncdata syncdata = {arrays, helper_arrays, channel_count, arraysize, x};
 
-        sys_callback(sndfiler_synchonize, (t_int*)&syncdata, sizeof(t_syncdata));
+        sys_callback(sndfiler_synchonize, (t_int*)&syncdata, sizeof(t_syncdata)/sizeof(t_int));
         return;
     }
     else
@@ -322,12 +322,22 @@ static t_int sndfiler_synchonize(t_int * w)
     for (i = 0; i != channel_count; ++i)
     {
         t_garray * garray = arrays[i];
-        t_array * array = h_garray_getarray(garray);
-        t_glist * gl = garray->x_glist;;
+        t_glist * gl = garray->x_glist;
 
-        freealignedbytes(array->a_vec, array->a_elemsize * array->a_n);
-        array->a_vec = (char*)helper_arrays[i];
-        array->a_n = frames;
+        t_word* vec;
+        int size, j;
+        garray_resize_long(garray, frames);//can unconditionally resize since read passed frames based on resize parameter
+        if (!garray_getfloatwords(garray, &size, &vec) || (size != frames))
+		{
+			pd_error(x, "resize failed");
+			return 0;
+		}
+
+        int j;
+        for (j = 0; j != size; j++)
+        	vec[j].w_float = helper_arrays[i][j];
+
+        freebytes(helper_arrays[i], frames * sizeof(t_float));
 
         if (gl->gl_list == &garray->x_gobj && !garray->x_gobj.g_next)
         {

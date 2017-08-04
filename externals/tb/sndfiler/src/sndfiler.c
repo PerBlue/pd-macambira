@@ -130,7 +130,7 @@ static void sndfiler_thread(void)
         t_sfprocess * me;
         SEM_WAIT(sndfiler_queue.sem);
 
-        while (me = (t_sfprocess *)threadlib_fifo_get(sndfiler_queue.x_jobs))
+        while (me = (t_sfprocess *)threadlib_fifo_take(sndfiler_queue.x_jobs))
         {
             (me->process)(me->x, me->argc, me->argv);
 

@@ -62,6 +62,11 @@ THREADLIB_EXTERN void threadlib_fifo_destroy(t_fifo*);
 
 /* fifo_put() and fifo_get are the only threadsafe functions!!! */
 THREADLIB_EXTERN void threadlib_fifo_put(t_fifo*, void*);
+/* Doesn't block */
+THREADLIB_EXTERN void* threadlib_fifo_poll(t_fifo*);
+/* Blocks until lock can be obtained */
+THREADLIB_EXTERN void* threadlib_fifo_take(t_fifo*);
+/* Maps to threadlib_fifo_poll */
 THREADLIB_EXTERN void* threadlib_fifo_get(t_fifo*);
 
 

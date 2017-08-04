@@ -90,7 +90,7 @@ void threadlib_fifo_put(t_fifo* fifo, void* data)
 
 /* this fifo_get returns NULL if the fifo is empty 
  * or locked by another thread */
-void* threadlib_fifo_get(t_fifo* fifo)
+void* threadlib_fifo_poll(t_fifo* fifo)
 {
   t_fifocell * cell;
   void* data;
@@ -106,6 +106,39 @@ void* threadlib_fifo_get(t_fifo* fifo)
 	fifo->tail = fifo->head;
       data = cell->data;
 			
+      freebytes (cell, sizeof(t_fifocell));
+    }
+    else
+      data = NULL;
+
+    pthread_mutex_unlock(&fifo->mutex);
+  }
+  else
+    data = NULL;
+  return data;
+}
+
+void* threadlib_fifo_get(t_fifo* fifo)
+{
+	return threadlib_fifo_poll(fifo);
+}
+
+void* threadlib_fifo_take(t_fifo* fifo)
+{
+  t_fifocell * cell;
+  void* data;
+
+  if(!pthread_mutex_lock(&fifo->mutex))
+  {
+    cell = fifo->head->next;
+
+    if (cell != NULL)
+    {
+      fifo->head->next = cell->next;
+      if(cell == fifo->tail)
+	fifo->tail = fifo->head;
+      data = cell->data;
+
       freebytes (cell, sizeof(t_fifocell));
     }
     else
@@ -507,6 +540,16 @@ void* threadlib_fifo_get(t_fifo* fifo)
 		
   }
   return data;
+}
+
+void* threadlib_fifo_poll(t_fifo* fifo)
+{
+	return threadlib_fifo_get(fifo);
+}
+
+void* threadlib_fifo_take(t_fifo* fifo)
+{
+	return threadlib_fifo_get(fifo);
 }
 
 #endif

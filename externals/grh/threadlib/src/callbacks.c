@@ -53,10 +53,13 @@ void sys_callback(t_int (*callback) (t_int* argv), t_int* argv, t_int argc)
 	
   threadlib_fifo_put(h_callback_fifo, new);
   
+#if THREAD_LOCKING
   // TODO find solution without lock
   sys_lock();
   clock_delay(h_callback_clock, 0);
   sys_unlock();
+#endif
+  //else sys_callbackhook picks it up
 }
 
 static t_sched_callback *ringbuffer_head;
@@ -69,7 +72,7 @@ void h_run_callbacks()
   
   /* append idle callback to ringbuffer */
   
-  while ( (new_callback = (t_sched_callback*) threadlib_fifo_get(h_callback_fifo)) )
+  while ( (new_callback = (t_sched_callback*) threadlib_fifo_poll(h_callback_fifo)) )
   {
     t_sched_callback * next;
     
@@ -132,3 +135,10 @@ void h_run_callbacks()
 
   sys_lock();
 }
+
+#if !THREAD_LOCKING
+void sys_callbackhook()
+{
+	h_run_callbacks();
+}
+#endif

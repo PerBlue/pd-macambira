@@ -655,7 +655,7 @@ __declspec(dllexport)
 void sndfiler_setup(void)
 {
     sndfiler_class = class_new(gensym("sndfiler"), 
-        (t_newmethod)sndfiler_new, (t_method)sndfiler_free,,
+        (t_newmethod)sndfiler_new, (t_method)sndfiler_free,
         sizeof(t_sndfiler), 0, 0);
 
     class_addmethod(sndfiler_class, (t_method)sndfiler_read,

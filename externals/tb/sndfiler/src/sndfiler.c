@@ -114,6 +114,123 @@ typedef struct _syncdata
 static t_sfqueue sndfiler_queue; 
 static pthread_t sf_thread_id; /* id of soundfiler thread */
 
+/* linked list pieces */
+typedef struct node
+{
+    t_sndfiler* data;
+    struct node* next;
+} node;
+
+node* create(t_sndfiler* data,node* next)
+{
+    node* new_node = (node*)getbytes(sizeof(node));
+    if(new_node == NULL)
+    {
+        printf("Error creating a new node.\n");
+        return NULL;
+    }
+    new_node->data = data;
+    new_node->next = next;
+
+    return new_node;
+}
+
+node* prepend(node* head,t_sndfiler* data)
+{
+    node* new_node = create(data,head);
+    head = new_node;
+    return head;
+}
+
+node* remove_front(node* head)
+{
+    if(head == NULL)
+        return NULL;
+    node *front = head;
+    head = head->next;
+    front->next = NULL;
+    /* is this the last node in the list */
+    if(front == head)
+        head = NULL;
+    free(front);
+    return head;
+}
+
+node* remove_back(node* head)
+{
+    if(head == NULL)
+        return NULL;
+
+    node *cursor = head;
+    node *back = NULL;
+    while(cursor->next != NULL)
+    {
+        back = cursor;
+        cursor = cursor->next;
+    }
+
+    if(back != NULL)
+        back->next = NULL;
+
+    /* if this is the last node in the list*/
+    if(cursor == head)
+        head = NULL;
+
+    free(cursor);
+
+    return head;
+}
+
+node* remove_any(node* head,node* nd)
+{
+    if(nd == NULL)
+        return NULL;
+    /* if the node is the first node */
+    if(nd == head)
+        return remove_front(head);
+
+    /* if the node is the last node */
+    if(nd->next == NULL)
+        return remove_back(head);
+
+    /* if the node is in the middle */
+    node* cursor = head;
+    while(cursor != NULL)
+    {
+        if(cursor->next == nd)
+            break;
+        cursor = cursor->next;
+    }
+
+    if(cursor != NULL)
+    {
+        node* tmp = cursor->next;
+        cursor->next = tmp->next;
+        tmp->next = NULL;
+        free(tmp);
+    }
+    return head;
+
+}
+
+node* search(node* head,t_sndfiler* data)
+{
+
+    node *cursor = head;
+    while(cursor!=NULL)
+    {
+        if(cursor->data == data)
+            return cursor;
+        cursor = cursor->next;
+    }
+    return NULL;
+}
+/* linked list pieces */
+
+static pthread_mutex_t freed_mutex = PTHREAD_MUTEX_INITIALIZER;
+static node* freed_pointers_head = NULL;
+static node* active_pointers_head = NULL;
+
 static t_sndfiler *sndfiler_new(void)
 {
     t_sndfiler *x = (t_sndfiler *)pd_new(sndfiler_class);
@@ -182,6 +299,35 @@ static void sndfiler_start_thread(void)
             sf_param.sched_priority);
 }
 
+static void add_active_pointer(t_sndfiler * x)
+{
+	pthread_mutex_lock(&freed_mutex);
+	active_pointers_head = prepend(active_pointers_head, x);
+	pthread_mutex_unlock(&freed_mutex);
+}
+
+static int remove_active_pointer(t_sndfiler * x)
+{
+    node* freed_pointer;
+    node* active_pointer;
+
+    pthread_mutex_lock(&freed_mutex);
+    active_pointer = search(active_pointers_head, x);
+    if(active_pointer)
+        active_pointers_head = remove_any(active_pointers_head, active_pointer);
+
+    freed_pointer = search(freed_pointers_head, x);
+    if(freed_pointer) {
+        if(!search(active_pointers_head, x))
+            freed_pointers_head = remove_any(freed_pointers_head, freed_pointer);
+        pthread_mutex_unlock(&freed_mutex);
+        post("sndfiler already freed");
+        return 1;
+    }
+    pthread_mutex_unlock(&freed_mutex);
+    return 0;
+}
+
 static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv);
 
 /* syntax:
@@ -198,6 +344,8 @@ static void sndfiler_read(t_sndfiler * x, t_symbol *s, int argc, t_atom* argv)
     process->x = x;
     process->argc = argc;
     process->argv = (t_atom*) copybytes(argv, sizeof(t_atom) * argc);
+
+    add_active_pointer(x);
 
     threadlib_fifo_put(sndfiler_queue.x_jobs, process);
 
@@ -216,6 +364,9 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
 
     t_symbol* file;
     t_garray ** arrays;
+
+    if(remove_active_pointer(x))
+        return;
 
     // parse flags
     while (argc > 0 && argv->a_type == A_SYMBOL &&
@@ -258,7 +409,7 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
         {
             pd_error(x, "%s: no such array", atom_getsymbolarg(i+1, 
                          argc, argv)->s_name);
-            return;
+            goto error_cleanup;
         }
 	
         if(garray_getfloatwords(array, &size, &dummy))
@@ -267,7 +418,7 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
         {
             pd_error(x, "%s: bad template for sndfiler", atom_getsymbolarg(i+1, 
                          argc, argv)->s_name);
-            return;
+            goto error_cleanup;
         }
 	
         // in multichannel mode: check if arrays have different length
@@ -288,12 +439,14 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
     else
     {
         pd_error(x, "Error opening file");
-        return;
+        goto error_cleanup;
     }
 
     if(arraysize > 0)
     {
         t_syncdata syncdata = {arrays, helper_arrays, channel_count, arraysize, x};
+
+        add_active_pointer(x);
 
         sys_callback(sndfiler_synchonize, (t_int*)&syncdata, sizeof(t_syncdata)/sizeof(t_int));
         return;
@@ -301,12 +454,16 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
     else
     {
         pd_error(x, "Error opening file");
-        return;
+        goto error_cleanup;
     }
     
  usage:
-	pd_error(x, "usage: read [flags] filename array1 array2 ...");
+    pd_error(x, "usage: read [flags] filename array1 array2 ...");
     post("flags: -skip <n> -resize ");
+    return;
+ error_cleanup:
+    freebytes(helper_arrays, channel_count * sizeof(t_float*));
+    freebytes(arrays, channel_count * sizeof(t_garray*));
 }
 
 static t_int sndfiler_synchonize(t_int * w)
@@ -318,6 +475,9 @@ static t_int sndfiler_synchonize(t_int * w)
     int channel_count = syncdata->channel_count;
     int frames = syncdata->frames;
     t_sndfiler* x = syncdata->x;
+
+    if(remove_active_pointer(x))
+        return 0;
 
     for (i = 0; i != channel_count; ++i)
     {
@@ -481,13 +641,21 @@ static void sndfiler_t_resize(t_sndfiler *y, int argc, t_atom *argv)
     pd_error(x, "usage: resize tablename size");
 }
 
+static void sndfiler_free(t_sndfiler *x)
+{
+	pthread_mutex_lock(&freed_mutex);
+	if(search(active_pointers_head, x))
+		freed_pointers_head = prepend(freed_pointers_head, x);
+	pthread_mutex_unlock(&freed_mutex);
+}
+
 #ifdef _MSC_VER
 __declspec(dllexport)
 #endif
 void sndfiler_setup(void)
 {
     sndfiler_class = class_new(gensym("sndfiler"), 
-        (t_newmethod)sndfiler_new, 0,
+        (t_newmethod)sndfiler_new, (t_method)sndfiler_free,,
         sizeof(t_sndfiler), 0, 0);
 
     class_addmethod(sndfiler_class, (t_method)sndfiler_read,

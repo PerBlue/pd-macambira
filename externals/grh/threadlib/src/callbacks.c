@@ -110,7 +110,7 @@ void h_run_callbacks()
         /* callbacks returning 0 will be deleted */
         case 0:
           next = idle_callback->next;
-          freebytes (idle_callback->argv, idle_callback->argc);
+          freebytes (idle_callback->argv, idle_callback->argc * sizeof(t_int));
           freebytes ((void*)idle_callback, sizeof(t_sched_callback));
 
           if (last == NULL)

@@ -152,7 +152,7 @@ node* remove_front(node* head)
     /* is this the last node in the list */
     if(front == head)
         head = NULL;
-    free(front);
+    freebytes(front, sizeof(node));
     return head;
 }
 
@@ -176,7 +176,7 @@ node* remove_back(node* head)
     if(cursor == head)
         head = NULL;
 
-    free(cursor);
+    freebytes(cursor, sizeof(node));
 
     return head;
 }
@@ -207,7 +207,7 @@ node* remove_any(node* head,node* nd)
         node* tmp = cursor->next;
         cursor->next = tmp->next;
         tmp->next = NULL;
-        free(tmp);
+        freebytes(tmp, sizeof(node));
     }
     return head;
 
@@ -511,8 +511,8 @@ static t_int sndfiler_synchonize(t_int * w)
             garray_redraw(garray);
     }
 
-    free(arrays);
-    free(helper_arrays);
+    freebytes(arrays, channel_count * sizeof(t_float*));
+    freebytes(helper_arrays, channel_count * sizeof(t_float*));
 
     canvas_update_dsp();
 

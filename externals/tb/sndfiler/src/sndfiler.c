@@ -444,11 +444,16 @@ static void sndfiler_read_cb(t_sndfiler * x, int argc, t_atom* argv)
 
     if(arraysize > 0)
     {
-        t_syncdata syncdata = {arrays, helper_arrays, channel_count, arraysize, x};
+    	t_syncdata* syncdata = getbytes(sizeof(t_syncdata));
+    	syncdata->arrays = arrays;
+    	syncdata->helper_arrays = helper_arrays;
+    	syncdata->channel_count = channel_count;
+    	syncdata->frames = arraysize;
+    	syncdata->x = x;
 
         add_active_pointer(x);
 
-        sys_callback(sndfiler_synchonize, (t_int*)&syncdata, sizeof(t_syncdata)/sizeof(t_int));
+        sys_callback(sndfiler_synchonize, (t_int*)syncdata, 0);
         return;
     }
     else

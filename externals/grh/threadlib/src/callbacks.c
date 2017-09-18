@@ -47,7 +47,7 @@ void sys_callback(t_int (*callback) (t_int* argv), t_int* argv, t_int argc)
       (sizeof(t_sched_callback));
 
   new->function = callback;
-  new->argv = (t_int*) copybytes (argv, argc * sizeof (t_int));
+  new->argv = argc ? (t_int*) copybytes (argv, argc * sizeof (t_int)) : argv;
   new->argc = argc;
   new->next = NULL;
 	

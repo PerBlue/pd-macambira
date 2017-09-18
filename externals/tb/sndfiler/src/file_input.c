@@ -21,6 +21,8 @@
 #include "sndfiler.h"
 #include "file_input.h"
 
+#define SAMPLES_PER_READ 4096
+
 int check_fileformat(t_symbol* file)
 {
     FILE *fp = NULL;
@@ -129,7 +131,7 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
                        int resize, int array_size, t_symbol* file)
 {
     int arraysize = array_size;
-    int writesize = 0, i=0, j=0;
+    int writesize = 0, i=0, j=0, k=0;
     int pos=0, maxchannels=0, frames=0, frames_read=0;
     int current_section=0, finished=0;
     float **buftmp = NULL;
@@ -204,16 +206,23 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
         helper_arrays[i] = getalignedbytes(arraysize * sizeof(t_float));
     }
 
-    for (i = 0; i != writesize; ++i)
+    i = 0;
+    while(i != writesize)
     {
-        int ret = ov_read_float(&vorbisfile, &buftmp, 1, 
+        int ret = ov_read_float(&vorbisfile, &buftmp, SAMPLES_PER_READ,
                                 &current_section);
-        if(ret!=1)
+        if(ret <= 0)
+        {
             post("wrong return type while ogg decoding!");
+            break;
+        }
 
         for (j = 0; j != channel_count; ++j)
         {
-            helper_arrays[j][i] = buftmp[j][0];
+        	for (k = 0; k != ret; ++k)
+            {
+        	    helper_arrays[j][i] = buftmp[j][k];
+            }
         }
     }
 

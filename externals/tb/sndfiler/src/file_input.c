@@ -219,9 +219,9 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
 
         for (j = 0; j != channel_count; ++j)
         {
-        	for (k = 0; k != ret; ++k)
+            for (k = 0; k != ret; ++k)
             {
-        	    helper_arrays[j][i] = buftmp[j][i + k];
+        	    helper_arrays[j][i + k] = buftmp[j][k];
             }
         }
 

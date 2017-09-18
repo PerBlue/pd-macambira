@@ -88,10 +88,6 @@ int read_libsndfile(t_float** helper_arrays, int channel_count, int seek,
         writesize = (arraysize>(info.frames-pos)) ? 
             info.frames-pos : arraysize;
 
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-    munlockall();
-#endif
-
     for (i = 0; i != channel_count; ++i)
     {
         helper_arrays[i] = getalignedbytes(arraysize * sizeof(t_float));
@@ -124,10 +120,6 @@ int read_libsndfile(t_float** helper_arrays, int channel_count, int seek,
             }
         }
     }
-
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-    mlockall(MCL_FUTURE);
-#endif
 
     sf_close(sndfile);
     return arraysize;
@@ -207,10 +199,6 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
         writesize = (arraysize>(frames-pos)) ? 
                      frames-pos : arraysize;
 
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-    munlockall();
-#endif
-
     for (i = 0; i != channel_count; ++i)
     {
         helper_arrays[i] = getalignedbytes(arraysize * sizeof(t_float));
@@ -243,10 +231,6 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
             }
         }
     }
-
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-    mlockall(MCL_FUTURE);
-#endif
 
     ov_clear(&vorbisfile);
     return arraysize;

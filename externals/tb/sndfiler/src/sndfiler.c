@@ -575,10 +575,6 @@ static void sndfiler_t_resize(t_sndfiler *y, int argc, t_atom *argv)
     if (n < 1) n = 1;
     elemsize = template_findbyname(data->a_templatesym)->t_n * sizeof(t_word);
 
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-    munlockall();
-#endif
-
     if (was > n)
         nvec = (char*)copybytes(data->a_vec, was * elemsize);
     else
@@ -593,10 +589,6 @@ static void sndfiler_t_resize(t_sndfiler *y, int argc, t_atom *argv)
     if (!nvec)
     {
         pd_error(x, "array resize failed: out of memory");
-
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-        mlockall(MCL_FUTURE);
-#endif
 
         return;
     }
@@ -631,10 +623,6 @@ static void sndfiler_t_resize(t_sndfiler *y, int argc, t_atom *argv)
     else garray_redraw(x);
 
     freebytes (vec, was * elemsize);
-
-#if (_POSIX_MEMLOCK - 0) >= 200112L
-    mlockall(MCL_FUTURE);
-#endif
 
     sys_lock();
     outlet_float(y->x_obj.ob_outlet, (float)atom_getintarg(1,argc,argv)); 

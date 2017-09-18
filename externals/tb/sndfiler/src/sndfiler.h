@@ -64,10 +64,6 @@
 #include "alloca.h"
 #endif
 
-#if (_POSIX_MEMLOCK - 0) >=  200112L
-#include <sys/mman.h>
-#endif /* _POSIX_MEMLOCK */
-
 #ifdef __APPLE__
 #include <mach/mach.h>
 #include <mach/task.h>

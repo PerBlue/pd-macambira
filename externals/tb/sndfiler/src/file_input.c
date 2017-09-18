@@ -216,6 +216,7 @@ int read_libvorbisfile(t_float** helper_arrays, int channel_count, int seek,
             post("wrong return type while ogg decoding!");
             break;
         }
+        i += ret;
 
         for (j = 0; j != channel_count; ++j)
         {
